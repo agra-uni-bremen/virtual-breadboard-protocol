@@ -8,24 +8,17 @@ add_library(virtual-breadboard-server src/gpio-server.cpp)
 
 target_include_directories(virtual-breadboard-common
     PUBLIC 
-        $<INSTALL_INTERFACE:include>
-        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+        ${CMAKE_CURRENT_SOURCE_DIR}/include
     PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/src
 )
 
 target_include_directories(virtual-breadboard-client
-    PUBLIC 
-        $<INSTALL_INTERFACE:include>
-        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
     PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/src
 )
 
 target_include_directories(virtual-breadboard-server
-    PUBLIC 
-        $<INSTALL_INTERFACE:include>
-        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
     PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/src
 )
@@ -42,7 +35,7 @@ add_executable(vbb-cli-server test/cli-server.cpp)
 target_link_libraries(vbb-cli-client virtual-breadboard-client)
 target_link_libraries(vbb-cli-server virtual-breadboard-server)
 
-install(TARGETS virtual-breadboard-common
+install(TARGETS virtual-breadboard-common virtual-breadboard-client virtual-breadboard-server
     EXPORT virtualbreadboard-export
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
     ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
