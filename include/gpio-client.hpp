@@ -7,12 +7,12 @@
 
 #pragma once
 
-#include "gpiocommon.hpp"
 #include <functional>
 #include <unordered_map>
 #include <thread>
 #include <mutex>
 #include <iostream>
+#include "gpio-common.hpp"
 
 class GpioClient : public GpioCommon {
 public:

@@ -5,7 +5,7 @@
  *      Author: dwd
  */
 
-#include "gpiocommon.hpp"
+#include "../include/gpio-common.hpp"
 
 #include <stdio.h>
 #include <unistd.h>

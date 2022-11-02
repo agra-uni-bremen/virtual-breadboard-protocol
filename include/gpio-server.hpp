@@ -7,11 +7,10 @@
 
 #pragma once
 
-#include "gpiocommon.hpp"
-
 #include <functional>
 #include <atomic>
 #include <unordered_map>
+#include "gpio-common.hpp"
 
 class GpioServer : public GpioCommon {
 public:
