@@ -61,7 +61,8 @@ namespace gpio {
 	static constexpr unsigned max_num_pins = 64;
 
 	typedef uint8_t PinNumber;
-	static_assert(std::numeric_limits<PinNumber>::max() >= max_num_pins);
+	static_assert(std::numeric_limits<PinNumber>::max() >= max_num_pins,
+			"max_num_pins do not fit into PinNumber type");
 
 	typedef uint8_t IOF_Channel_ID;
 	typedef uint8_t SPI_Command;
