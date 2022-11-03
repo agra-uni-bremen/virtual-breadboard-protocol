@@ -68,7 +68,8 @@ int main(int argc, char* argv[]) {
 		if(*pin > 6)
 			*pin = 0;
 
-		cout << " SPI Command " << (int)sumbyte << " returned " << (int) gpio.pushSPI(spi_cs, sumbyte++) << endl;
+		cout << " SPI Command " << +sumbyte << " returned ";
+		cout << +gpio.pushSPI(spi_cs, sumbyte++) << endl;
 	}
 	gpio.quit();
 	server.join();
