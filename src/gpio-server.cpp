@@ -63,9 +63,6 @@ GpioServer::~GpioServer() {
 
 	closeAndInvalidate(control_channel_fd);
 	closeAndInvalidate(data_channel_fd);
-
-	if (this->base_port)
-		free((void*)this->base_port);
 }
 
 IOF_Channel_ID GpioServer::findNewID() {
@@ -310,8 +307,8 @@ void GpioServer::handleConnection(Socket conn) {
 					}
 				}
 
-				cout << "[gpio-server] Started IOF channel type " << (int)req.reqIOF.iof <<
-						" on pin " << (int)req.reqIOF.pin << " with ID " << (int)response.id << endl;
+				cout << "[gpio-server] Started IOF channel type " << static_cast<unsigned>(req.reqIOF.iof) <<
+						" on pin " << +req.reqIOF.pin << " with ID " << +response.id << endl;
 				IOF_Channelinfo info = {.id = response.id, .requested_iof = req.reqIOF.iof };
 				active_IOF_channels.emplace(req.reqIOF.pin, info);
 
@@ -321,7 +318,7 @@ void GpioServer::handleConnection(Socket conn) {
 				{
 				auto channel = active_IOF_channels.find(req.reqIOF.pin);
 				if(channel == active_IOF_channels.end()) {
-					cerr << "[gpio-server] IOF quit on non active pin " << (int)req.reqIOF.pin << endl;
+					cerr << "[gpio-server] IOF quit on non active pin " << +req.reqIOF.pin << endl;
 					return;
 				}
 				//cout << "[gpio-server] IOF quit on pin " << (int)req.reqIOF.pin << endl;
