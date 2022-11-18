@@ -128,11 +128,11 @@ void GpioClient::notifyEndIOFchannel(PinNumber pin) {
 	req.reqIOF.pin = pin;
 
 	if (!writeStruct(control_channel, &req)) {
-		cerr << "[gpio-client] Error in write 'Stop SPI IOF' for pin " << (int)pin << endl;
+		cerr << "[gpio-client] Error in write 'Stop SPI IOF' for pin " << +pin << endl;
 		return ;
 	}
 
-	cout << "[gpio-client] Sent end-iof for pin " << (int)pin << endl;
+	cout << "[gpio-client] Sent end-iof for pin " << +pin << endl;
 }
 
 bool GpioClient::isIOFactive(gpio::PinNumber pin) {
@@ -149,7 +149,7 @@ void GpioClient::closeIOFunction(gpio::PinNumber pin) {
 	// FIXME: Search in dataChannels by pin O(n)
 	for(const auto& [id, description] : activeIOFs) {
 		if(description.pin == pin) {
-			cout << "Closing iof of pin " << (int)pin << endl;
+			cout << "Closing iof of pin " << +pin << endl;
 			if(control_channel > 0) {
 				notifyEndIOFchannel(pin);
 			}
@@ -161,7 +161,7 @@ void GpioClient::closeIOFunction(gpio::PinNumber pin) {
 
 bool GpioClient::registerSPIOnChange(PinNumber pin, OnChange_SPI fun, bool noResponse){
 	if(state.pins[pin] != Pinstate::IOF_SPI) {
-		cerr << "[gpio-client] WARN: Register SPI onchange on pin " << (int)pin << " with no SPI io-function (yet)" << endl;
+		cerr << "[gpio-client] WARN: Register SPI onchange on pin " << +pin << " with no SPI io-function (yet)" << endl;
 	}
 
 	IOFChannelDescription desc;
@@ -178,7 +178,7 @@ bool GpioClient::registerSPIOnChange(PinNumber pin, OnChange_SPI fun, bool noRes
 
 bool GpioClient::registerPINOnChange(PinNumber pin, OnChange_PIN fun){
 	if(isIOF(state.pins[pin])) {
-		cerr << "[gpio-client] WARN: Register PIN onchange on pin " << (int)pin << " with an io-function" << endl;
+		cerr << "[gpio-client] WARN: Register PIN onchange on pin " << +pin << " with an io-function" << endl;
 	}
 
 	IOFChannelDescription desc;
@@ -195,8 +195,8 @@ bool GpioClient::addIOFchannel(IOFChannelDescription desc){
 	lock_guard<std::mutex> guard(activeIOFs_m);
 	const auto response = requestIOFchannel(desc.pin, desc.iof);
 
-	if(response.port < 1024) {
-		cerr << "[gpio-client] [data channel] Server returned invalid port " << (int)response.port << endl;
+	if(response.port < Req_IOF_Response::invalid_port_below) {
+		cerr << "[gpio-client] [data channel] Server returned invalid port " << +response.port << endl;
 		return false;
 	}
 
@@ -224,7 +224,7 @@ void GpioClient::handleDataChannel() {
 		lock_guard<std::mutex> guard(activeIOFs_m);
 		auto channelID = activeIOFs.find(update.id);
 		if(channelID == activeIOFs.end()) {
-			cerr << "[gpio-client] [data channel] got non-registered IOF-ID " << (int)update.id << endl;
+			cerr << "[gpio-client] [data channel] got non-registered IOF-ID " << +update.id << endl;
 			// TODO Decide if this is an error condition that resets everything, as we may have lost Sync
 			break;
 		}

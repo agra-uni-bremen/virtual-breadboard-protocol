@@ -57,8 +57,8 @@ namespace gpio {
 
 	bool isIOF(const Pinstate s);
 
-	static constexpr unsigned default_port = 1400;
-	static constexpr unsigned max_num_pins = 64;
+	constexpr unsigned default_port = 1400;
+	constexpr unsigned max_num_pins = 64;
 
 	typedef uint8_t PinNumber;
 	static_assert(std::numeric_limits<PinNumber>::max() >= max_num_pins,
@@ -104,6 +104,7 @@ namespace gpio {
 	};
 
 	struct Req_IOF_Response {
+		static constexpr uint16_t invalid_port_below = 1024;
 		uint16_t port = 0;	// zero is error condition
 		IOF_Channel_ID id = 0;
 	};
