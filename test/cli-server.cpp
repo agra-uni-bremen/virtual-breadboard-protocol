@@ -61,7 +61,8 @@ int main(int argc, char* argv[]) {
 		usleep(100000);
 		// here was a bitshift, implement this for lulz?
 
-		cout << " SPI Command " << (int)sumbyte << " returned " << (int) gpio.pushSPI(spi_cs, sumbyte++) << endl;
+		cout << " SPI Command " << +sumbyte << " returned " << +gpio.pushSPI(spi_cs, sumbyte) << endl;
+		sumbyte++;
 
 		auto pin = reinterpret_cast<uint8_t*>(&gpio.state.pins[11]);
 		(*pin)++;

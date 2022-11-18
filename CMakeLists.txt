@@ -32,6 +32,7 @@ target_compile_features(virtual-breadboard-server PRIVATE cxx_std_17)
 
 add_executable(vbb-cli-client test/cli-client.cpp)
 add_executable(vbb-cli-server test/cli-server.cpp)
+target_compile_features(vbb-cli-server PRIVATE cxx_std_20)
 target_link_libraries(vbb-cli-client virtual-breadboard-client)
 target_link_libraries(vbb-cli-server virtual-breadboard-server)
 
