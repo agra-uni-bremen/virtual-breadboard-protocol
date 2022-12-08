@@ -7,14 +7,17 @@
 
 #pragma once
 
+#include "gpio-common.hpp"
+
 #include <functional>
 #include <atomic>
 #include <unordered_map>
-#include "gpio-common.hpp"
+#include <vector>
 
 class GpioServer : public GpioCommon {
 public:
 	typedef std::function<void(gpio::PinNumber pin, gpio::Tristate val)> OnChangeCallback;
+	typedef std::function<void(gpio::PinNumber pin, std::vector<gpio::UART_Byte> bytes)> OnUART_RX_Callback;
 
 private:
 	typedef int Socket;
@@ -31,7 +34,7 @@ private:
 	// TODO: Performance testing. Better as static array?
 	struct IOF_Channelinfo {
 		gpio::IOF_Channel_ID id;
-		gpio::IOFunction requested_iof;		// Requested IO-Function to avoid protocol mismatch
+		gpio::Request::IOFunction requested_iof;		// Requested IO-Function to avoid protocol mismatch
 	};
 	std::unordered_map<gpio::PinNumber, IOF_Channelinfo> active_IOF_channels;
 
@@ -55,4 +58,6 @@ public:
 	void pushPin(gpio::PinNumber pin, gpio::Tristate state);
 	// pin number should be the active CS
 	gpio::SPI_Response pushSPI(gpio::PinNumber pin, gpio::SPI_Command byte);
+	void registerUARTRX(gpio::PinNumber pin, OnUART_RX_Callback callback);
+	void pushUART(gpio::PinNumber pin, std::vector<gpio::UART_Byte> bytes);
 };

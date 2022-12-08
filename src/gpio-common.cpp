@@ -59,6 +59,12 @@ void GpioCommon::printRequest(const Request& req) {
 					break;
 			}
 			break;
+		case Request::Type::UART_TRANSMIT_SINGLE:
+			cout << "UART TX/RX pin " << +req.uartSingle.pin << " 0x" <<  hex << +req.uartSingle.byte << dec;
+			break;
+		case Request::Type::UART_TRANSMIT_BURST:
+			cout << "UART BURST TX/RX pin " << +req.uartBurst.pin << " 0x" << hex << +req.uartBurst.num_bytes << dec << "Bytes following";
+			break;
 		case Request::Type::REQ_IOF:
 			cout << "Request io-function (or logstate)";
 			break;

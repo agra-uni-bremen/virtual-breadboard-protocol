@@ -17,26 +17,19 @@ void bitPrint(unsigned char* buf, size_t size);
 namespace gpio {
 
 	// TODO: Remove Redundancies and make Pinstate a struct
+	// State of Server pins
 	enum class Pinstate : uint8_t {
 		UNSET = 0,
 		LOW,
 		HIGH,
-		//TODO: Maybe _weak for pullups/downs
+		// TODO: Maybe _weak for pullups/downs
 
+		// TODO: Explicitly state which function, e.g. UART_RX
 		START_OF_IOFs = 4,
 		IOF_SPI = START_OF_IOFs,
 		IOF_I2C,	// not yet used
 		IOF_PWM,	// planned to be used
-		IOF_UART,	// not yet used
-	};
-
-	enum class IOFunction : uint8_t {
-		SPI = 0,
-		SPI_NORESPONSE,
-		I2C,
-		PWM,
-		UART,
-		BITSYNC,
+		IOF_UART,
 	};
 
 	enum class Tristate : uint8_t {
@@ -76,13 +69,24 @@ namespace gpio {
 			uint64_t port[(sizeof(gpio::Pinstate) * sizeof(pins) + 1) / sizeof(uint64_t)];
 		};
 		static_assert(sizeof(gpio::Pinstate) * sizeof(pins) != sizeof(port) * sizeof(uint64_t),
-				"Warning: Convenience-function port is causing State to be bigger than necessary");
+				"Warning: Convenience-function 'port' is causing State to be bigger than necessary");
 	};
 
 	struct Request {
+		enum class IOFunction: uint8_t {
+			SPI = 0,
+			SPI_NORESPONSE,
+			I2C,
+			PWM,
+			UART_RX,	// as seen from initiator (Client)
+			BITSYNC,
+		};
+
 		enum class Type : uint8_t {
 			GET_BANK = 1,
 			SET_BIT,
+			UART_TRANSMIT_SINGLE,		// FixMe: Perhaps better with second channel?
+			UART_TRANSMIT_BURST,
 			REQ_IOF,
 			END_IOF,
 			REQ_START_SIM,
@@ -90,22 +94,32 @@ namespace gpio {
 		} op;
 		union {
 			struct {
-				PinNumber pin : 6;	// current max num pins: 64
-				gpio::Tristate val : 2;
+				PinNumber pin;
+				gpio::Tristate val;
 			} setBit;
 
 			struct {
 				// Todo: Decide how to determine SPI's Chip Select
 				// Perhaps pin shall be one of the hardware CS pins
 				PinNumber pin;
-				gpio::IOFunction iof; // request a specific IO-function (in advance).
+				IOFunction iof; // request a specific IO-function (in advance).
 			} reqIOF;
+
+			struct {	// client to server
+				PinNumber pin;
+				uint8_t byte;
+			} uartSingle;
+
+			struct {	// client to server
+				PinNumber pin;
+				uint8_t num_bytes;
+			} uartBurst;
 		};
 	};
 
 	struct Req_IOF_Response {
 		static constexpr uint16_t invalid_port_below = 1024;
-		uint16_t port = 0;	// zero is error condition
+		uint16_t port = 0;	// below 'invalid_port_below' is error condition
 		IOF_Channel_ID id = 0;
 	};
 

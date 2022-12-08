@@ -263,6 +263,50 @@ void GpioServer::handleConnection(Socket conn) {
 				}
 				break;
 			}
+			case Request::Type::UART_TRANSMIT_SINGLE: {
+				if (req.uartSingle.pin >= max_num_pins) {
+					cerr << "[gpio-server] invalid request sendUART pin number " << req.setBit.pin << endl;
+					break;
+				}
+
+				if (state.pins[req.uartSingle.pin] != Pinstate::IOF_UART){
+					cerr << "[gpio-server] Ignoring sendUart " << +req.uartSingle.byte << " on not UART pin" << endl;
+					break;
+				}
+
+				// TODO: Find correct callback
+				cout << "[gpio-server] dispaching UART byte " << +req.uartSingle.byte << " to pin " << +req.uartSingle.pin << " not yet implemented" << endl;
+
+				break;
+			}
+			case Request::Type::UART_TRANSMIT_BURST: {
+				if (req.uartSingle.pin >= max_num_pins) {
+					cerr << "[gpio-server] invalid request sendUART pin number " << req.setBit.pin << endl;
+					break;
+				}
+
+				if (state.pins[req.uartBurst.pin] != Pinstate::IOF_UART){
+					cerr << "[gpio-server] Ignoring sendUart " << +req.uartSingle.byte << " on not UART pin" << endl;
+					break;
+				}
+
+				// TODO: Find correct callback
+				cout << "[gpio-server] dispaching UART burst to pin " << +req.uartSingle.pin << " not yet implemented" << endl;
+
+				// TODO: Very slow memory-wise if not on stack
+				std::vector<gpio::UART_Byte> bytes(req.uartBurst.num_bytes);
+				if(!readStruct(conn, bytes.data())) {
+					cerr << "[gpio-server] Could not get read UART burst bytes" << endl;
+					closeAndInvalidate(control_channel_fd);
+					break;
+				}
+				for(const auto& byte : bytes) {
+					cout << +byte << " ";
+				}
+				cout << endl;
+
+				break;
+			}
 			case Request::Type::REQ_IOF:
 			{
 				Req_IOF_Response response{0};
@@ -277,7 +321,7 @@ void GpioServer::handleConnection(Socket conn) {
 						// no break, so that response is 0
 					}
 
-					{
+					{ // setup new listening socket for IOF data channel
 						struct sockaddr_in sin;
 						socklen_t len = sizeof(sin);
 						if (getsockname(data_channel_listener, (struct sockaddr *)&sin, &len) == -1) {
@@ -288,6 +332,7 @@ void GpioServer::handleConnection(Socket conn) {
 						data_channel_port = response.port;
 					}
 
+					// send port response to client
 					if (!writeStruct(conn, &response)) {
 						cerr << "[gpio-server] could not write IOF-Req answer" << endl;
 						closeAndInvalidate(data_channel_listener);
@@ -295,7 +340,7 @@ void GpioServer::handleConnection(Socket conn) {
 						return;
 					}
 
-					// TODO: set socket nonblock with timeout (~1s)
+					// TODO: set socket nonblock or with timeout (~1s)
 					data_channel_fd = awaitConnection(data_channel_listener);
 					closeAndInvalidate(data_channel_listener);	// accepting just the first connection
 				}
@@ -341,7 +386,7 @@ void GpioServer::pushPin(gpio::PinNumber pin, gpio::Tristate state) {
 		return;
 	}
 
-	if(channel->second.requested_iof != IOFunction::BITSYNC) {
+	if(channel->second.requested_iof != Request::IOFunction::BITSYNC) {
 		// requested different IOF
 		return;
 	}
@@ -351,7 +396,7 @@ void GpioServer::pushPin(gpio::PinNumber pin, gpio::Tristate state) {
 	update.payload.pin = state;
 
 	if(!writeStruct(data_channel_fd, &update)) {
-		cerr << "[gpio-server] Could not write PIN update to pin " << (int)pin << endl;
+		cerr << "[gpio-server] Could not write PIN update to pin " << +pin << endl;
 		closeAndInvalidate(data_channel_fd);
 		active_IOF_channels.clear();
 	}
@@ -360,6 +405,7 @@ void GpioServer::pushPin(gpio::PinNumber pin, gpio::Tristate state) {
 SPI_Response GpioServer::pushSPI(gpio::PinNumber pin, gpio::SPI_Command byte) {
 	auto channel = active_IOF_channels.find(pin);
 	if(channel == active_IOF_channels.end()) {
+		// Not even an active IOF channel
 		return 0;
 	}
 	/*
@@ -367,20 +413,20 @@ SPI_Response GpioServer::pushSPI(gpio::PinNumber pin, gpio::SPI_Command byte) {
 	 * It should receive all SPI data, not just the CS activated ones
 	 */
 
-	if(channel->second.requested_iof != IOFunction::SPI &&
-	   channel->second.requested_iof != IOFunction::SPI_NORESPONSE) {
+	if(channel->second.requested_iof != Request::IOFunction::SPI &&
+	   channel->second.requested_iof != Request::IOFunction::SPI_NORESPONSE) {
 		// requested different IOF
 		return 0;
 	}
 
-	const bool noResponse = channel->second.requested_iof == IOFunction::SPI_NORESPONSE;
+	const bool noResponse = channel->second.requested_iof == Request::IOFunction::SPI_NORESPONSE;
 
 	IOF_Update update;
 	update.id = channel->second.id;
 	update.payload.spi = byte;
 
 	if(!writeStruct(data_channel_fd, &update)) {
-		cerr << "[gpio-server] Could not write SPI command to cs " << (int)pin << endl;
+		cerr << "[gpio-server] Could not write SPI command to cs " << +pin << endl;
 		closeAndInvalidate(data_channel_fd);
 		active_IOF_channels.clear();
 		return 0;
@@ -388,9 +434,36 @@ SPI_Response GpioServer::pushSPI(gpio::PinNumber pin, gpio::SPI_Command byte) {
 
 	SPI_Response response = 0;
 	if(!noResponse && !readStruct(data_channel_fd, &response)) {
-		cerr << "[gpio-server] Could not read SPI response to cs " << (int)pin << endl;
+		cerr << "[gpio-server] Could not read SPI response to cs " << +pin << endl;
 		closeAndInvalidate(data_channel_fd);
 		active_IOF_channels.clear();
 	}
 	return response;
 }
+
+void GpioServer::pushUART(gpio::PinNumber pin, std::vector<UART_Byte> bytes) {
+	auto channel = active_IOF_channels.find(pin);
+	if(channel == active_IOF_channels.end()) {
+		// Not even an active IOF channel
+		return;
+	}
+	if(channel->second.requested_iof != Request::IOFunction::UART_RX){
+		// requested different IOF
+		return;
+	}
+
+	// TODO: BURST not yet implemented
+
+	IOF_Update update;
+	update.id = channel->second.id;
+	for(const auto& byte : bytes) {
+		update.payload.uart = byte;
+		if(!writeStruct(data_channel_fd, &update)) {
+			cerr << "[gpio-server] Could not write uart byte to pin " << +pin << endl;
+			closeAndInvalidate(data_channel_fd);
+			active_IOF_channels.clear();
+			return;
+		}
+	}
+}
+

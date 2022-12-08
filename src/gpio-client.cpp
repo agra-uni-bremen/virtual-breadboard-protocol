@@ -96,7 +96,44 @@ bool GpioClient::setBit(uint8_t pos, Tristate val) {
 	return true;
 }
 
-gpio::Req_IOF_Response GpioClient::requestIOFchannel(gpio::PinNumber pin, gpio::IOFunction iof_type) {
+bool GpioClient::sendUart(gpio::PinNumber pos, std::vector<gpio::UART_Byte> bytes) {
+	Request req;
+	memset(&req, 0, sizeof(Request));
+	if(bytes.size() == 1) {
+		// single is fastest
+		req.op = Request::Type::UART_TRANSMIT_SINGLE;
+		req.uartSingle.pin = pos;
+		req.uartSingle.byte = bytes.front();
+
+		if (!writeStruct(control_channel, &req)) {
+			cerr << "[gpio-client] Error in uart sendbyte" << endl;
+			return false;
+		}
+		return true;
+	} else {
+		// Burst mode
+		assert(bytes.size() < std::numeric_limits<typeof(req.uartBurst.num_bytes)>::max() &&
+				"Too many bulk uart bytes");
+
+		req.op = Request::Type::UART_TRANSMIT_BURST;
+		req.uartBurst.pin = pos;
+		req.uartBurst.num_bytes = bytes.size();
+
+		if (!writeStruct(control_channel, &req)) {
+			cerr << "[gpio-client] Error in uart burst size header" << endl;
+			return false;
+		}
+
+		// now "payload"
+		if (!writeStruct(control_channel, bytes.data())) {
+			cerr << "[gpio-client] Error in uart burst payload" << endl;
+			return false;
+		}
+	}
+	return true;
+}
+
+gpio::Req_IOF_Response GpioClient::requestIOFchannel(gpio::PinNumber pin, gpio::Request::IOFunction iof_type) {
 	Request req;
 	memset(&req, 0, sizeof(Request));
 	req.op = Request::Type::REQ_IOF;
@@ -166,12 +203,25 @@ bool GpioClient::registerSPIOnChange(PinNumber pin, OnChange_SPI fun, bool noRes
 
 	IOFChannelDescription desc;
 	if(!noResponse)
-		desc.iof = IOFunction::SPI;
+		desc.iof = Request::IOFunction::SPI;
 	else
-		desc.iof = IOFunction::SPI_NORESPONSE;
+		desc.iof = Request::IOFunction::SPI_NORESPONSE;
 
 	desc.pin = pin;
 	desc.onchange.spi = fun;
+
+	return addIOFchannel(desc);
+}
+
+bool GpioClient::registerUARTOnChange(PinNumber pin, OnChange_UART fun){
+	if(state.pins[pin] != Pinstate::IOF_UART) {
+		cerr << "[gpio-client] WARN: Register Uart RX on pin " << +pin << " with a different io-function" << endl;
+	}
+
+	IOFChannelDescription desc;
+	desc.iof = Request::IOFunction::UART_RX;
+	desc.pin = pin;
+	desc.onchange.uart = fun;
 
 	return addIOFchannel(desc);
 }
@@ -182,7 +232,7 @@ bool GpioClient::registerPINOnChange(PinNumber pin, OnChange_PIN fun){
 	}
 
 	IOFChannelDescription desc;
-	desc.iof = IOFunction::BITSYNC;
+	desc.iof = Request::IOFunction::BITSYNC;
 	desc.pin = pin;
 	desc.onchange.pin = fun;
 
@@ -230,7 +280,7 @@ void GpioClient::handleDataChannel() {
 		}
 		const auto& desc = channelID->second;
 		switch(desc.iof) {
-		case IOFunction::SPI:
+		case Request::IOFunction::SPI:
 		{
 			SPI_Response resp = desc.onchange.spi(update.payload.spi);
 			if(!writeStruct(data_channel, &resp)) {
@@ -239,24 +289,29 @@ void GpioClient::handleDataChannel() {
 			}
 			break;
 		}
-		case IOFunction::SPI_NORESPONSE:
+		case Request::IOFunction::SPI_NORESPONSE:
 		{
 			SPI_Response resp = desc.onchange.spi(update.payload.spi);
 			if(resp != 0) {
-				cerr << "[gpio-client] [data channel] Warn: Wrote SPI response '" << (int)resp << "' in NORESPONSE mode" << endl;
+				cerr << "[gpio-client] [data channel] Warn: Wrote SPI response '" << +resp << "' in NORESPONSE mode" << endl;
 				break;
 			}
 			break;
 		}
-		case IOFunction::BITSYNC:
+		case Request::IOFunction::BITSYNC:
 		{
 			state.pins[desc.pin] = toPinstate(update.payload.pin);
 			desc.onchange.pin(update.payload.pin);
 			break;
 		}
-
+		case Request::IOFunction::UART_RX:
+		{
+			// TODO: Handle burst UART bytes
+			desc.onchange.uart(std::vector<UART_Byte>{update.payload.uart});
+			break;
+		}
 		default:
-			cerr << "[gpio-client] [data channel] Unhandled IO-Function " << (int) desc.iof << endl;
+			cerr << "[gpio-client] [data channel] Unhandled IO-Function " << static_cast<int>(desc.iof) << endl;
 			break;
 		}
 	}
