@@ -264,8 +264,6 @@ void GpioServer::handleConnection(Socket conn) {
 					break;
 				}
 
-				cout << "[gpio-server] Debug: dispaching UART single to pin " << +req.uartSingle.pin << endl;
-
 				const auto& cb = active_UART_channels.find(req.uartSingle.pin);
 				if(cb == active_UART_channels.end()) {
 					cerr << "[gpio-server] Ignoring uart single to not-listening pin " << +req.uartSingle.pin << endl;
@@ -284,8 +282,6 @@ void GpioServer::handleConnection(Socket conn) {
 					cerr << "[gpio-server] Ignoring sendUart on not UART pin " << +req.uartBurst.pin << endl;
 					break;
 				}
-
-				cout << "[gpio-server] Debug: dispaching UART burst to pin " << +req.uartBurst.pin << endl;
 
 				// TODO: Very slow memory-wise if not on stack
 				gpio::UART_Bytes uart_bytes(req.uartBurst.num_bytes);

@@ -66,7 +66,8 @@ int main(int argc, char* argv[]) {
 			cout << byte;
 		cout << endl;
 
-		static const std::string answ{"And gondor will answer"};
+		std::string answ{"And gondor will answer"};
+		answ += std::to_string(bytes.back());
 		gpio.pushUART(uart_tx, UART_Bytes{answ.begin(), answ.end()});
 	});
 
@@ -74,7 +75,7 @@ int main(int argc, char* argv[]) {
 	SPI_Command sumbyte = 0;
 	while (!stop) {
 		// some example actions
-		usleep(100000);
+		usleep(500000);
 
 		cout << " SPI Command " << +sumbyte << " returned " << +gpio.pushSPI(spi_cs, sumbyte) << endl;
 		sumbyte++;

@@ -134,6 +134,7 @@ int uartPingPong(GpioClient& gpio) {
 
 	unsigned testnumber = 0;
 	std::string basetext = "Hello from the other side ";
+	char x[] = "X";
 	while(gpio.update()){
 		usleep(1000000); // one second
 		GpioCommon::printState(gpio.state);
@@ -142,7 +143,8 @@ int uartPingPong(GpioClient& gpio) {
 		if (testnumber > 9)
 			testnumber = 0;
 
-		gpio.sendUart(uart_tx, UART_Bytes{testtext.begin(), testtext.end()});
+		gpio.sendUart(uart_tx, UART_Bytes{x, x + 1});	// test single
+		gpio.sendUart(uart_tx, UART_Bytes{testtext.begin(), testtext.end()}); // test burst
 	}
 
 	return 0;

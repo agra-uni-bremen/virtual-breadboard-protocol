@@ -116,11 +116,6 @@ bool GpioClient::sendUart(gpio::PinNumber pos, std::vector<gpio::UART_Byte> byte
 			return false;
 		}
 
-		cout << "[gpio-client] Debug: sending UART ";
-		for(const auto& byte : bytes)
-			cout << byte;
-		cout << endl;
-
 		// now "payload"
 		if (!writeStruct(control_channel, &bytes)) {
 			cerr << "[gpio-client] Error in uart burst payload" << endl;
