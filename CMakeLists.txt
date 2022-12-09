@@ -3,8 +3,8 @@ project(libvirtualbreadboard-protocol VERSION 1.0.0 LANGUAGES CXX)
 
 
 add_library(virtual-breadboard-common src/gpio-common.cpp)
-add_library(virtual-breadboard-client src/gpio-client.cpp)
-add_library(virtual-breadboard-server src/gpio-server.cpp)
+add_library(virtual-breadboard-client src/gpio-client.cpp src/readwrite.cpp)
+add_library(virtual-breadboard-server src/gpio-server.cpp src/readwrite.cpp)
 
 target_include_directories(virtual-breadboard-common
     PUBLIC 

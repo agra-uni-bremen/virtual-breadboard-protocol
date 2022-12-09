@@ -70,10 +70,10 @@ int registerForSPI(GpioClient& gpio) {
 		if(gpio.state.pins[spi_pin] == Pinstate::IOF_SPI) {
 			if(gpio.registerSPIOnChange(spi_pin,
 					[spi_pin](SPI_Command c){
-						cout << "Pin " << (int)spi_pin << " got SPI command " << (int)c << endl; return c%4;
+						cout << "Pin " << +spi_pin << " got SPI command " << (int)c << endl; return c%4;
 					}
 				)){
-				cout << "Registered SPI on Pin " << (int)spi_pin << endl;
+				cout << "Registered SPI on Pin " << +spi_pin << endl;
 			} else {
 				cerr << "Could not register SPI onchange" << endl;
 				return -1;
@@ -82,9 +82,69 @@ int registerForSPI(GpioClient& gpio) {
 	}
 
 	while(gpio.update()){
-		usleep(1000000);
+		usleep(1000000); // one second
 		GpioCommon::printState(gpio.state);
 	}
+	return 0;
+}
+
+int uartPingPong(GpioClient& gpio) {
+	if (!gpio.update()) {
+		cerr << "Error updating" << endl;
+		return -1;
+	}
+
+	PinNumber uart_rx;
+	//looking for all available UART pins
+	for(uart_rx = 0; uart_rx < max_num_pins; uart_rx++){
+		if(gpio.state.pins[uart_rx] == Pinstate::IOF_UART_TX) {
+			if(gpio.registerUARTOnChange(uart_rx,
+					[uart_rx](gpio::UART_Bytes bytes){
+						cout << "Pin " << +uart_rx << " got UART:";
+						for(const auto& byte : bytes)
+							cout << byte;
+						cout << endl;
+					}
+				)){
+				cout << "Registered UART receiver on Pin " << +uart_rx << endl;
+				break;
+			} else {
+				cerr << "Could not register UART listener!" << endl;
+				return -1;
+			}
+		}
+	}
+	if(uart_rx >= max_num_pins){
+		cerr << "Could not find a uart_tx pin" << endl;
+		return -2;
+	}
+
+	// finding uart_tx port
+	PinNumber uart_tx;
+	for(uart_tx = 0; uart_tx  < max_num_pins; uart_tx++) {
+		if(gpio.state.pins[uart_tx] == Pinstate::IOF_UART_RX) {
+			cout << "Found SoC RX on pin " << +uart_tx << endl;
+			break;
+		}
+	}
+	if(uart_tx >= max_num_pins){
+		cerr << "Could not find a uart_rx pin" << endl;
+		return -2;
+	}
+
+	unsigned testnumber = 0;
+	std::string basetext = "Hello from the other side ";
+	while(gpio.update()){
+		usleep(1000000); // one second
+		GpioCommon::printState(gpio.state);
+		// send uart burst
+		auto testtext = basetext + std::to_string(testnumber++);
+		if (testnumber > 9)
+			testnumber = 0;
+
+		gpio.sendUart(uart_tx, UART_Bytes{testtext.begin(), testtext.end()});
+	}
+
 	return 0;
 }
 
@@ -115,6 +175,8 @@ int main(int argc, char* argv[]) {
 		return setPins(gpio);
 	case 2:
 		return registerForSPI(gpio);
+	case 3:
+		return uartPingPong(gpio);
 	default:
 		cerr << "Invalid test number given." << endl;
 		return -1;

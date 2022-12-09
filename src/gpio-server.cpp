@@ -7,12 +7,12 @@
 
 #include "gpio-server.hpp"
 #include "gpio-client.hpp" // for force quit of listening switch
-
 #include <arpa/inet.h>
 #include <errno.h>
 #include <netdb.h>
 #include <netinet/in.h>
 #include <netinet/tcp.h>	// for TCP_NODELAY
+#include <readwrite.hpp>
 #include <set>
 #include <signal.h>
 #include <stdlib.h>
@@ -40,15 +40,6 @@ static void *get_in_addr(struct sockaddr *sa) {
 	return &(((struct sockaddr_in6 *)sa)->sin6_addr);
 }
 */
-
-template<typename T>
-bool writeStruct(int handle, T* s){
-	return write(handle, s, sizeof(T)) == sizeof(T);
-}
-template<typename T>
-bool readStruct(int handle, T* s){
-	return read(handle, s, sizeof(T)) == sizeof(T);
-}
 
 GpioServer::GpioServer() :
 		listener_socket_fd(-1), control_channel_fd(-1), data_channel_fd(-1),
@@ -253,7 +244,6 @@ void GpioServer::handleConnection(Socket conn) {
 					cerr << "[gpio-server] Ignoring setPin on IOF" << endl;
 					break;
 				}
-
 				// sanity checks ok
 
 				if (onchange_fun != nullptr) {
@@ -265,46 +255,52 @@ void GpioServer::handleConnection(Socket conn) {
 			}
 			case Request::Type::UART_TRANSMIT_SINGLE: {
 				if (req.uartSingle.pin >= max_num_pins) {
-					cerr << "[gpio-server] invalid request sendUART pin number " << req.setBit.pin << endl;
+					cerr << "[gpio-server] invalid request sendUART pin number " << req.uartSingle.pin << endl;
 					break;
 				}
 
-				if (state.pins[req.uartSingle.pin] != Pinstate::IOF_UART){
-					cerr << "[gpio-server] Ignoring sendUart " << +req.uartSingle.byte << " on not UART pin" << endl;
+				if (state.pins[req.uartSingle.pin] != Pinstate::IOF_UART_RX){
+					cerr << "[gpio-server] Ignoring sendUart " << +req.uartSingle.byte << " on not UART to pin " << +req.uartBurst.pin << endl;
 					break;
 				}
 
-				// TODO: Find correct callback
-				cout << "[gpio-server] dispaching UART byte " << +req.uartSingle.byte << " to pin " << +req.uartSingle.pin << " not yet implemented" << endl;
+				cout << "[gpio-server] Debug: dispaching UART single to pin " << +req.uartSingle.pin << endl;
 
+				const auto& cb = active_UART_channels.find(req.uartSingle.pin);
+				if(cb == active_UART_channels.end()) {
+					cerr << "[gpio-server] Ignoring uart single to not-listening pin " << +req.uartSingle.pin << endl;
+					break;
+				}
+				cb->second(std::vector{req.uartSingle.byte});
 				break;
 			}
 			case Request::Type::UART_TRANSMIT_BURST: {
-				if (req.uartSingle.pin >= max_num_pins) {
-					cerr << "[gpio-server] invalid request sendUART pin number " << req.setBit.pin << endl;
+				if (req.uartBurst.pin >= max_num_pins) {
+					cerr << "[gpio-server] invalid request sendUART pin number " << req.uartBurst.pin << endl;
 					break;
 				}
 
-				if (state.pins[req.uartBurst.pin] != Pinstate::IOF_UART){
-					cerr << "[gpio-server] Ignoring sendUart " << +req.uartSingle.byte << " on not UART pin" << endl;
+				if (state.pins[req.uartBurst.pin] != Pinstate::IOF_UART_RX){
+					cerr << "[gpio-server] Ignoring sendUart on not UART pin " << +req.uartBurst.pin << endl;
 					break;
 				}
 
-				// TODO: Find correct callback
-				cout << "[gpio-server] dispaching UART burst to pin " << +req.uartSingle.pin << " not yet implemented" << endl;
+				cout << "[gpio-server] Debug: dispaching UART burst to pin " << +req.uartBurst.pin << endl;
 
 				// TODO: Very slow memory-wise if not on stack
-				std::vector<gpio::UART_Byte> bytes(req.uartBurst.num_bytes);
-				if(!readStruct(conn, bytes.data())) {
+				gpio::UART_Bytes uart_bytes(req.uartBurst.num_bytes);
+				if(!readStruct(conn, &uart_bytes)) {
 					cerr << "[gpio-server] Could not get read UART burst bytes" << endl;
 					closeAndInvalidate(control_channel_fd);
 					break;
 				}
-				for(const auto& byte : bytes) {
-					cout << +byte << " ";
-				}
-				cout << endl;
 
+				const auto& cb = active_UART_channels.find(req.uartBurst.pin);
+				if(cb == active_UART_channels.end()) {
+					cerr << "[gpio-server] Ignoring uart single to not-listening pin " << +req.uartBurst.pin << endl;
+					break;
+				}
+				cb->second(uart_bytes);
 				break;
 			}
 			case Request::Type::REQ_IOF:
@@ -441,7 +437,18 @@ SPI_Response GpioServer::pushSPI(gpio::PinNumber pin, gpio::SPI_Command byte) {
 	return response;
 }
 
-void GpioServer::pushUART(gpio::PinNumber pin, std::vector<UART_Byte> bytes) {
+void GpioServer::registerUARTRX(gpio::PinNumber pin, OnUART_RX_Callback callback) {
+	const auto uartCB = active_UART_channels.find(pin);
+	if(uartCB != active_UART_channels.end()) {
+		// Already an CB on pin active
+		cerr << "[gpio-server] [uart] Warn: Overwriting an active callback on pin " << +pin << endl;
+		active_UART_channels.erase(pin);
+	}
+
+	active_UART_channels.emplace(pin, callback);
+}
+
+void GpioServer::pushUART(gpio::PinNumber pin, UART_Bytes bytes) {
 	auto channel = active_IOF_channels.find(pin);
 	if(channel == active_IOF_channels.end()) {
 		// Not even an active IOF channel

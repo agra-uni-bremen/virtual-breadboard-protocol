@@ -12,12 +12,12 @@
 #include <functional>
 #include <atomic>
 #include <unordered_map>
-#include <vector>
+
 
 class GpioServer : public GpioCommon {
 public:
 	typedef std::function<void(gpio::PinNumber pin, gpio::Tristate val)> OnChangeCallback;
-	typedef std::function<void(gpio::PinNumber pin, std::vector<gpio::UART_Byte> bytes)> OnUART_RX_Callback;
+	typedef std::function<void(gpio::UART_Bytes bytes)> OnUART_RX_Callback;
 
 private:
 	typedef int Socket;
@@ -37,6 +37,7 @@ private:
 		gpio::Request::IOFunction requested_iof;		// Requested IO-Function to avoid protocol mismatch
 	};
 	std::unordered_map<gpio::PinNumber, IOF_Channelinfo> active_IOF_channels;
+	std::unordered_map<gpio::PinNumber, OnUART_RX_Callback> active_UART_channels;
 
 	gpio::IOF_Channel_ID findNewID();
 
@@ -59,5 +60,5 @@ public:
 	// pin number should be the active CS
 	gpio::SPI_Response pushSPI(gpio::PinNumber pin, gpio::SPI_Command byte);
 	void registerUARTRX(gpio::PinNumber pin, OnUART_RX_Callback callback);
-	void pushUART(gpio::PinNumber pin, std::vector<gpio::UART_Byte> bytes);
+	void pushUART(gpio::PinNumber pin, gpio::UART_Bytes bytes);
 };

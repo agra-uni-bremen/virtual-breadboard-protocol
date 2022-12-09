@@ -6,7 +6,6 @@
  */
 
 #include "gpio-client.hpp"
-
 #include <arpa/inet.h>
 #include <errno.h>
 #include <netdb.h>
@@ -19,6 +18,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 #include <assert.h>
+#include <readwrite.hpp>
 
 #include <iostream>
 
@@ -33,18 +33,10 @@ static void *get_in_addr(struct sockaddr *sa) {
 	if (sa->sa_family == AF_INET) {
 		return &(((struct sockaddr_in *)sa)->sin_addr);
 	}
-
-	return &(((struct sockaddr_in6 *)sa)->sin6_addr);
-}
-
-template<typename T>
-bool writeStruct(int handle, T* s){
-	return write(handle, s, sizeof(T)) == sizeof(T);
-}
-
-template<typename T>
-bool readStruct(int handle, T* s){
-	return read(handle, s, sizeof(T)) == sizeof(T);
+	else if(sa->sa_family == AF_INET6) {
+		return &(((struct sockaddr_in6 *)sa)->sin6_addr);
+	}
+	return nullptr;
 }
 
 void GpioClient::closeAndInvalidate(Socket& fd) {
@@ -124,8 +116,13 @@ bool GpioClient::sendUart(gpio::PinNumber pos, std::vector<gpio::UART_Byte> byte
 			return false;
 		}
 
+		cout << "[gpio-client] Debug: sending UART ";
+		for(const auto& byte : bytes)
+			cout << byte;
+		cout << endl;
+
 		// now "payload"
-		if (!writeStruct(control_channel, bytes.data())) {
+		if (!writeStruct(control_channel, &bytes)) {
 			cerr << "[gpio-client] Error in uart burst payload" << endl;
 			return false;
 		}
@@ -214,8 +211,8 @@ bool GpioClient::registerSPIOnChange(PinNumber pin, OnChange_SPI fun, bool noRes
 }
 
 bool GpioClient::registerUARTOnChange(PinNumber pin, OnChange_UART fun){
-	if(state.pins[pin] != Pinstate::IOF_UART) {
-		cerr << "[gpio-client] WARN: Register Uart RX on pin " << +pin << " with a different io-function" << endl;
+	if(state.pins[pin] != Pinstate::IOF_UART_TX) {
+		cerr << "[gpio-client] WARN: Register Uart recieve on pin " << +pin << " with a different io-function" << endl;
 	}
 
 	IOFChannelDescription desc;

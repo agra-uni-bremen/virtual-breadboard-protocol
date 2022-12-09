@@ -97,8 +97,11 @@ void GpioCommon::printPinstate(const gpio::Pinstate& state) {
 	case Pinstate::IOF_PWM:
 		cout << "p";
 		break;
-	case Pinstate::IOF_UART:
+	case Pinstate::IOF_UART_RX:
 		cout << "u";
+		break;
+	case Pinstate::IOF_UART_TX:
+		cout << "U";
 		break;
 	default:
 		cout << "?";

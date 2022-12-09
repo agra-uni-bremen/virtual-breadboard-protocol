@@ -14,13 +14,12 @@
 #include <thread>
 #include <mutex>
 #include <iostream>
-#include <vector>
 
 class GpioClient : public GpioCommon {
 public:
 	typedef std::function<gpio::SPI_Response(gpio::SPI_Command byte)> OnChange_SPI;
 	typedef std::function<void(gpio::Tristate val)> OnChange_PIN;
-	typedef std::function<void(std::vector<gpio::UART_Byte>)> OnChange_UART;
+	typedef std::function<void(gpio::UART_Bytes bytes)> OnChange_UART;
 
 private:
 	typedef int Socket;

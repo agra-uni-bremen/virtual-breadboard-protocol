@@ -10,6 +10,7 @@
 #include <inttypes.h>
 #include <stddef.h>
 #include <limits>       // std::numeric_limits
+#include <vector>
 
 void hexPrint(unsigned char* buf, size_t size);
 void bitPrint(unsigned char* buf, size_t size);
@@ -29,7 +30,8 @@ namespace gpio {
 		IOF_SPI = START_OF_IOFs,
 		IOF_I2C,	// not yet used
 		IOF_PWM,	// planned to be used
-		IOF_UART,
+		IOF_UART_RX,// Seen from SoC
+		IOF_UART_TX,// Seen from SoC
 	};
 
 	enum class Tristate : uint8_t {
@@ -61,6 +63,7 @@ namespace gpio {
 	typedef uint8_t SPI_Command;
 	typedef uint8_t SPI_Response;
 	typedef uint8_t UART_Byte;
+	typedef std::vector<gpio::UART_Byte> UART_Bytes;
 
 	struct State {
 		//TODO somehow packed?

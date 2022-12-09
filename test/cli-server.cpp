@@ -54,16 +54,32 @@ int main(int argc, char* argv[]) {
 	gpio.state.pins[spi_cs] = Pinstate::IOF_SPI;
 	gpio.state.pins[1] = Pinstate::IOF_PWM;
 
-	SPI_Command sumbyte = 0;
 
+
+	const PinNumber uart_tx = 2;
+	const PinNumber uart_rx = 3;
+	gpio.state.pins[uart_tx] = Pinstate::IOF_UART_TX;
+	gpio.state.pins[uart_rx] = Pinstate::IOF_UART_RX;
+	gpio.registerUARTRX(uart_rx, [uart_rx,uart_tx,&gpio](gpio::UART_Bytes bytes){
+		cout << "UartRX pin " << +uart_rx << ": ";
+		for(const auto& byte : bytes)
+			cout << byte;
+		cout << endl;
+
+		static const std::string answ{"And gondor will answer"};
+		gpio.pushUART(uart_tx, UART_Bytes{answ.begin(), answ.end()});
+	});
+
+
+	SPI_Command sumbyte = 0;
 	while (!stop) {
 		// some example actions
 		usleep(100000);
-		// here was a bitshift, implement this for lulz?
 
 		cout << " SPI Command " << +sumbyte << " returned " << +gpio.pushSPI(spi_cs, sumbyte) << endl;
 		sumbyte++;
 
+		// cycle through states in pin 11
 		auto pin = reinterpret_cast<uint8_t*>(&gpio.state.pins[11]);
 		(*pin)++;
 		if(*pin > 6)
