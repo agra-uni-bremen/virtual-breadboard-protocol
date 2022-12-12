@@ -26,9 +26,9 @@ target_include_directories(virtual-breadboard-server
 target_link_libraries(virtual-breadboard-client virtual-breadboard-common pthread)
 target_link_libraries(virtual-breadboard-server virtual-breadboard-common virtual-breadboard-client) 
 
-target_compile_features(virtual-breadboard-common PUBLIC cxx_std_17)
-target_compile_features(virtual-breadboard-client PUBLIC cxx_std_17)
-target_compile_features(virtual-breadboard-server PUBLIC cxx_std_20)
+target_compile_features(virtual-breadboard-common PRIVATE cxx_std_17)
+target_compile_features(virtual-breadboard-client PRIVATE cxx_std_17)
+target_compile_features(virtual-breadboard-server PRIVATE cxx_std_20)
 
 add_executable(vbb-cli-client test/cli-client.cpp)
 add_executable(vbb-cli-server test/cli-server.cpp)
