@@ -18,6 +18,7 @@ class GpioServer : public GpioCommon {
 public:
 	typedef std::function<void(gpio::PinNumber pin, gpio::Tristate val)> OnChangeCallback;
 	typedef std::function<void(gpio::UART_Bytes bytes)> OnUART_RX_Callback;
+	//typedef std::function<gpio::UART_Bytes(void)> UART_TX_Function;
 
 private:
 	typedef int Socket;
@@ -42,6 +43,7 @@ private:
 	gpio::IOF_Channel_ID findNewID();
 
 	static void closeAndInvalidate(Socket& fd);
+	void resetAllDatachannels();
 
 	static int openSocket(const char* port);
 

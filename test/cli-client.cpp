@@ -95,14 +95,14 @@ int uartPingPong(GpioClient& gpio) {
 	}
 
 	PinNumber uart_rx;
-	//looking for all available UART pins
+	//looking for first available UART TX pin
 	for(uart_rx = 0; uart_rx < max_num_pins; uart_rx++){
 		if(gpio.state.pins[uart_rx] == Pinstate::IOF_UART_TX) {
 			if(gpio.registerUARTOnChange(uart_rx,
 					[uart_rx](gpio::UART_Bytes bytes){
-						cout << "Pin " << +uart_rx << " got UART:";
+						//cout << "Pin " << +uart_rx << " UART: ";
 						for(const auto& byte : bytes)
-							cout << byte;
+							cout << byte << " (" << +byte << ")";
 						cout << endl;
 					}
 				)){
@@ -115,11 +115,11 @@ int uartPingPong(GpioClient& gpio) {
 		}
 	}
 	if(uart_rx >= max_num_pins){
-		cerr << "Could not find a uart_tx pin" << endl;
+		cerr << "Could not find a UART_TX pin" << endl;
 		return -2;
 	}
 
-	// finding uart_tx port
+	// finding first available UART RX port
 	PinNumber uart_tx;
 	for(uart_tx = 0; uart_tx  < max_num_pins; uart_tx++) {
 		if(gpio.state.pins[uart_tx] == Pinstate::IOF_UART_RX) {
@@ -128,7 +128,7 @@ int uartPingPong(GpioClient& gpio) {
 		}
 	}
 	if(uart_tx >= max_num_pins){
-		cerr << "Could not find a uart_rx pin" << endl;
+		cerr << "Could not find a UART_RX pin" << endl;
 		return -2;
 	}
 
