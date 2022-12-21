@@ -53,9 +53,9 @@ namespace gpio {
 	bool isIOF(const Pinstate s);
 
 	constexpr unsigned default_port = 1400;
-	constexpr unsigned max_num_pins = 64;
 
 	typedef uint8_t PinNumber;
+	constexpr PinNumber max_num_pins = 64;
 	static_assert(std::numeric_limits<PinNumber>::max() >= max_num_pins,
 			"max_num_pins do not fit into PinNumber type");
 
