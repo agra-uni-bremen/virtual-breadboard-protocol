@@ -63,12 +63,15 @@ IOF_Channel_ID GpioServer::findNewID() {
 	}
 	IOF_Channel_ID ret = 0;
 	for(const auto& id : used_ids) {
-		if(id > ret)
-			return ret;
+		if(id > ret) {
+			break;
+		}
 		ret++;
 	}
-	cerr << "[GPIO-Server] No new channel ID could be found! "
-			<< active_IOF_channels.size() << " items in use, what are you doing?" << endl;
+	if(ret == std::numeric_limits<IOF_Channel_ID>::max()) {
+		cerr << "[GPIO-Server] No new channel ID could be found! "
+			 << active_IOF_channels.size() << " items in use, what are you doing?" << endl;
+	}
 	return ret;
 }
 
