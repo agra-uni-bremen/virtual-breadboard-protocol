@@ -57,22 +57,23 @@ GpioServer::~GpioServer() {
 }
 
 IOF_Channel_ID GpioServer::findNewID() {
+	if(active_IOF_channels.size() >= std::numeric_limits<IOF_Channel_ID>::max()) {
+		cerr << "[GPIO-Server] Too many channels in use (" << active_IOF_channels.size() << "), can not generate new one" << endl;
+		return std::numeric_limits<IOF_Channel_ID>::max();
+	}
+
+	// copy IDs into set (-> sorted) for faster search
 	set<IOF_Channel_ID> used_ids;
 	for(const auto& [pin, channelinfo] : active_IOF_channels) {
 		used_ids.insert(channelinfo.id);
 	}
-	IOF_Channel_ID ret = 0;
-	for(const auto& id : used_ids) {
-		if(id > ret) {
-			break;
-		}
-		ret++;
+
+	IOF_Channel_ID unused_id = 0;
+	while(used_ids.find(unused_id) != used_ids.end()) {
+		unused_id++;
 	}
-	if(ret == std::numeric_limits<IOF_Channel_ID>::max()) {
-		cerr << "[GPIO-Server] No new channel ID could be found! "
-			 << active_IOF_channels.size() << " items in use, what are you doing?" << endl;
-	}
-	return ret;
+
+	return unused_id;
 }
 
 void GpioServer::closeAndInvalidate(Socket& fd) {
@@ -308,7 +309,7 @@ void GpioServer::handleConnection(Socket conn) {
 			case Request::Type::REQ_IOF:
 			{
 				Req_IOF_Response response{0};
-				response.id = findNewID();			// ignoring the fact that IDs may run out
+				response.id = findNewID();			// FIXME: ignoring the fact that IDs may run out
 				response.port = data_channel_port;	// will be overwritten if channel not existing
 
 				if(data_channel_fd < 0) {
