@@ -57,9 +57,6 @@ GpioServer::~GpioServer() {
 }
 
 IOF_Channel_ID GpioServer::findNewID() {
-	if(active_IOF_channels.size() < numeric_limits<gpio::IOF_Channel_ID>::max()) {
-		return active_IOF_channels.size();
-	}
 	set<IOF_Channel_ID> used_ids;
 	for(const auto& [pin, channelinfo] : active_IOF_channels) {
 		used_ids.insert(channelinfo.id);
